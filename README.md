@@ -12,6 +12,24 @@ imported into that first account automatically.
 ## Deploy
 See [DEPLOY.md](DEPLOY.md): Railway + Postgres + Storage Bucket, then YouTube / TikTok / Instagram app setup.
 
+## Database migrations (Alembic)
+Migrations run **automatically**:
+- **Before every Railway deploy** (`railway.json → preDeployCommand: python -m app.migrations`). If a migration fails, the deploy stops and the previous version keeps running.
+- **At app startup**, as a safety net. A Postgres lock makes concurrent runs wait for each other.
+
+Databases created before migrations existed are detected and adopted at the baseline (`0001_initial`); nothing is recreated.
+
+To change the schema:
+1. Edit the models in `app/db.py`.
+2. Generate a migration: `.venv\Scripts\alembic revision --autogenerate -m "describe the change"`
+3. Review the new file in `migrations/versions/`. Autogenerate is a draft: check defaults, renames and data moves.
+4. Apply it locally: `.venv\Scripts\python -m app.migrations` (or just restart the app).
+5. Check nothing was missed: `.venv\Scripts\alembic check` should say "No new upgrade operations detected".
+6. Commit and deploy. Railway applies it before the new version goes live.
+
+Rules for safe deploys: add new columns as nullable or with a `server_default`, and never rename or drop a column
+in the same deploy that stops using it. The old version keeps running against the migrated database until the new one is live.
+
 ## How it fits together
 | Piece | Where |
 |---|---|

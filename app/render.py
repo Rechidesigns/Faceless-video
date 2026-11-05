@@ -34,11 +34,15 @@ def to_wav(src: Path, out: Path, pad: float) -> Path:
     return out
 
 
-def scene_clip(src: Path | None, kind: str, dur: float, out: Path, index: int) -> Path:
+def scene_clip(src: Path | None, kind: str, dur: float, out: Path, index: int, start: float = 0.0) -> Path:
     cover = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
     if kind == "video":
-        run(["-stream_loop", "-1", "-i", str(src), "-t", f"{dur:.3f}", "-an",
-             "-vf", f"{cover},fps={FPS}", *ENC, str(out)])
+        # slow push-in (up to +7%) keeps every shot moving, even static stock footage
+        push = (f"scale=w='trunc({W}*(1+0.07*t/{max(dur, 0.1):.3f})/2)*2':h=-2:eval=frame,"
+                f"crop={W}:{H}")
+        seek = ["-ss", f"{start:.3f}"] if start > 0 else []
+        run([*seek, "-stream_loop", "-1", "-i", str(src), "-t", f"{dur:.3f}", "-an",
+             "-vf", f"{cover},{push},setsar=1,fps={FPS}", *ENC, str(out)])
     elif kind == "image":
         frames = max(int(dur * FPS) + 1, 2)
         step = 0.18 / frames
@@ -53,6 +57,33 @@ def scene_clip(src: Path | None, kind: str, dur: float, out: Path, index: int) -
         run(["-f", "lavfi", "-i", f"color=c=0x111827:s={W}x{H}:r={FPS}", "-t", f"{dur:.3f}",
              *ENC, str(out)])
     return out
+
+
+def scene_from_shots(shots: list[tuple[Path | None, str]], dur: float, out: Path, index: int,
+                     workdir: Path) -> Path:
+    """Fast-cut scene: split the scene's duration across its shots, each starting at a random point."""
+    import random
+    if len(shots) == 1:
+        src, kind = shots[0]
+        start = 0.0
+        if kind == "video":
+            try:
+                start = max(0.0, random.uniform(0, max(0.0, duration(src) - dur - 0.2)))
+            except RuntimeError:
+                pass
+        return scene_clip(src, kind, dur, out, index, start)
+    each = dur / len(shots)
+    parts = []
+    for k, (src, kind) in enumerate(shots):
+        d = round(each, 3) if k < len(shots) - 1 else round(dur - each * (len(shots) - 1), 3)
+        start = 0.0
+        if kind == "video":
+            try:
+                start = max(0.0, random.uniform(0, max(0.0, duration(src) - d - 0.2)))
+            except RuntimeError:
+                pass
+        parts.append(scene_clip(src, kind, d, workdir / f"{out.stem}_{k}.mp4", index + k, start))
+    return concat(parts, out, workdir)
 
 
 def concat(files: list[Path], out: Path, workdir: Path) -> Path:

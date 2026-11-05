@@ -12,7 +12,7 @@ import threading
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
@@ -21,10 +21,27 @@ MUSIC = ROOT / "music"
 FONTS = ROOT / "fonts"
 
 
+_dotenv: dict = {"mtime": None, "vals": {}}
+
+
+def _dotenv_vals() -> dict:
+    """The .env file's values, re-read when the file changes (edits apply without a restart)."""
+    try:
+        m = ENV_FILE.stat().st_mtime
+    except FileNotFoundError:
+        return {}
+    if _dotenv["mtime"] != m:
+        _dotenv["vals"] = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()}
+        _dotenv["mtime"] = m
+    return _dotenv["vals"]
+
+
 def env(name: str, default: str = "") -> str:
-    if ENV_FILE.exists():
-        load_dotenv(ENV_FILE, override=True)
-    return os.getenv(name, default).strip()
+    """Real environment variables win; .env fills in what isn't set. Blank values never override."""
+    v = os.environ.get(name, "").strip()
+    if v:
+        return v
+    return (_dotenv_vals().get(name) or "").strip() or default
 
 
 # All persistent data lives under DATA_DIR (a Railway volume in production).
@@ -53,6 +70,9 @@ EDITABLE = {
     "PEXELS_API_KEY": {"group": "media", "label": "Pexels API key", "secret": True},
     "CLOUDFLARE_ACCOUNT_ID": {"group": "media", "label": "Cloudflare account ID", "secret": False},
     "CLOUDFLARE_API_TOKEN": {"group": "media", "label": "Cloudflare API token", "secret": True},
+    "NVIDIA_API_KEY": {"group": "media", "label": "NVIDIA API key (Cosmos3-nano AI video clips: auto-used once NVIDIA opens the API)", "secret": True},
+    "COSMOS_ENABLED": {"group": "media", "label": "Use Cosmos AI clips when available (true/false)", "secret": False},
+    "COSMOS_MAX_SCENES": {"group": "media", "label": "Max Cosmos AI clips per video (default 3)", "secret": False},
     "GOOGLE_CLIENT_ID": {"group": "youtube", "label": "Google OAuth client ID", "secret": False},
     "GOOGLE_CLIENT_SECRET": {"group": "youtube", "label": "Google OAuth client secret", "secret": True},
     "TIKTOK_CLIENT_KEY": {"group": "tiktok", "label": "TikTok client key", "secret": False},

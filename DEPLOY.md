@@ -56,6 +56,11 @@ and a **Storage Bucket** (the video files).
 
 No Railway volume is needed: everything permanent lives in Postgres and the bucket.
 
+**Database migrations run automatically on every deploy.** `railway.json` sets the pre-deploy command
+`python -m app.migrations`, which runs before the new version starts. If it fails, Railway stops the deploy and the
+previous version keeps serving, so a broken migration never takes the site down. In the deploy's logs, look for
+`Migrations OK: {... 'up_to_date': True}`. See README → *Database migrations* for how to add one.
+
 **Background music:** put royalty-free tracks in `music/` and commit them. They're built into the image.
 
 **Users:** anyone can register at `/login → Create account` while sign-ups are on. Passwords are stored as argon2 hashes.

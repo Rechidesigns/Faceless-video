@@ -290,9 +290,9 @@
   </div>
   <div class="field"><label>Visuals</label>
     <div class="seg" data-k="visual_mode">
-      <label><input type="radio" value="stock"><span>Stock footage</span></label>
-      <label><input type="radio" value="ai"><span>AI images</span></label>
-      <label><input type="radio" value="mixed" checked><span>Both (alternate)</span></label>
+      <label><input type="radio" value="stock"><span>Real people (stock video)</span></label>
+      <label><input type="radio" value="ai"><span>AI visuals</span></label>
+      <label><input type="radio" value="mixed" checked><span>Mix (mostly people + some AI)</span></label>
     </div></div>
   <div class="field"><label>Captions</label>
     <div class="seg" data-k="caption_style">
@@ -474,7 +474,7 @@ function sceneHTML(sc, i) {
       <button class="small" data-del="${i}" title="Delete">✕</button></span></div>
     <div class="field"><label>Narration</label><textarea class="narration">${esc(sc.narration)}</textarea></div>
     <div class="row" style="margin-bottom:0">
-      <div><label>Stock footage search</label><input class="stock" value="${esc(sc.stock_query)}"></div>
+      <div><label>Footage shots (fast cuts, separate with | )</label><input class="stock" value="${esc(sc.stock_query)}" placeholder="man running stairs | crowd cheering"></div>
       <div><label>AI image prompt</label><input class="prompt" value="${esc(sc.image_prompt)}"></div>
     </div></div>`;
 }
@@ -753,7 +753,7 @@ $("#btn-save-settings").onclick = () => busy($("#btn-save-settings"), async () =
 });
 $("#btn-test-keys").onclick = () => busy($("#btn-test-keys"), async () => {
   const r = await api("/api/settings/test", { method: "POST" });
-  const where = { GEMINI_API_KEY: "ai", GROQ_API_KEY: "ai", OPENROUTER_API_KEY: "ai", DEEPSEEK_API_KEY: "ai", PIXABAY_API_KEY: "media", PEXELS_API_KEY: "media", CLOUDFLARE_API_TOKEN: "media",
+  const where = { GEMINI_API_KEY: "ai", GROQ_API_KEY: "ai", OPENROUTER_API_KEY: "ai", DEEPSEEK_API_KEY: "ai", NVIDIA_API_KEY: "media", PIXABAY_API_KEY: "media", PEXELS_API_KEY: "media", CLOUDFLARE_API_TOKEN: "media",
                   storage: "users", youtube: "youtube", tiktok: "tiktok", instagram: "instagram" };
   const LABELS = { ...PLATFORM, storage: "Video storage" };
   $$("[id^=test-]").forEach(el => el.innerHTML = "");

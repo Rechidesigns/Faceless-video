@@ -17,11 +17,22 @@ Rules:
 - Each scene's narration is 1-2 sentences.
 - End with a satisfying payoff or a short call to action.
 - Be factually careful; do not invent statistics.
-- stock_query: 1-3 plain English words naming concrete, filmable footage (e.g. "city night traffic"). Never abstract.
-- image_prompt: a vivid English prompt for an AI image generator: subject, setting, lighting, mood, cinematic, vertical composition. No text, letters, words or logos.
+- shots: the stock-footage plan for the scene. Give 2 shots per scene (3 for the first scene, which is the hook).
+  Each shot is a 2-4 word English search query for real filmed footage of a concrete moment.
+  STRONGLY prefer real people in action or showing emotion: e.g. "man sprinting stairs", "woman laughing phone",
+  "scientist looking microscope", "crowd cheering stadium", "chef chopping vegetables", "boy surprised face".
+  When people don't fit, use vivid moving footage ("waves crashing rocks", "city traffic"). Never abstract words.
+  Write them the way stock libraries tag clips: WHO + ACTION (+ PLACE), common words, e.g. "woman jogging park",
+  "man writing notebook", "family eating dinner". No time-of-day words (morning, night, sunrise), no brand names,
+  and never screen/UI elements (no "follow button", "subscribe", "like", "app screen", "text").
+  Consecutive shots should feel like a fast-cut edit: vary angle and subject (close-up, wide, reaction).
+- image_prompt: a vivid English prompt for an AI image/video generator showing the scene with people in action:
+  subject, action, setting, lighting, mood, cinematic, vertical composition. No text, letters, words or logos.
 - title: under 70 characters, curiosity-driven, no hashtags.
 Return ONLY a JSON object with exactly this shape:
-{"title": "...", "scenes": [{"narration": "...", "stock_query": "...", "image_prompt": "..."}], "description": "...", "hashtags": ["#tag"]}"""
+{"title": "...", "scenes": [{"narration": "...", "shots": ["...", "..."], "image_prompt": "..."}], "description": "...", "hashtags": ["#tag"]}"""
+
+SHOT_SEP = " | "  # shots are stored in scene["stock_query"] joined by this, so the editor shows them as one field
 
 TOPICS_SYSTEM = """You plan content for a faceless short-form video channel (TikTok / YouTube Shorts).
 Generate specific, curiosity-driven video topics that fit the channel's niche.
@@ -68,9 +79,15 @@ def _normalize(data: dict, topic: str) -> dict:
         narration = str(sc.get("narration", "")).strip()
         if not narration:
             continue
+        shots = sc.get("shots") or []
+        if isinstance(shots, str):
+            shots = shots.split("|")
+        shots = [str(s).strip() for s in shots if str(s).strip()][:3]
+        if not shots:
+            shots = [str(sc.get("stock_query") or topic).strip()]
         scenes.append({
             "narration": narration,
-            "stock_query": str(sc.get("stock_query") or topic).strip(),
+            "stock_query": SHOT_SEP.join(shots),
             "image_prompt": str(sc.get("image_prompt") or narration).strip(),
         })
     if not scenes:

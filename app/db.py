@@ -3,7 +3,7 @@ import time
 import uuid
 from contextlib import contextmanager
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, create_engine, inspect, text
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy import true as sa_true
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -93,19 +93,10 @@ class Setting(Base):
     value: Mapped[str] = mapped_column(Text)
 
 
-# Columns added after the first release: (table, column, SQL type + default). Existing rows get the default.
-_ADDED_COLUMNS = [
-    ("users", "is_approved", "BOOLEAN NOT NULL DEFAULT TRUE"),
-]
-
-
 def init() -> None:
-    Base.metadata.create_all(engine)
-    insp = inspect(engine)
-    with engine.begin() as conn:
-        for table, col, ddl in _ADDED_COLUMNS:
-            if col not in {c["name"] for c in insp.get_columns(table)}:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+    """Bring the database schema up to date (Alembic migrations in /migrations)."""
+    from . import migrations  # lazy: migrations imports this module
+    migrations.run()
 
 
 @contextmanager

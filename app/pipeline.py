@@ -59,15 +59,23 @@ def run(job: dict, update, log) -> None:
     used: set = set()
     clips, blank = [], 0
     have_sources = any(config.get(k) for k in ("PIXABAY_API_KEY", "PEXELS_API_KEY", "CLOUDFLARE_API_TOKEN"))
+    try:
+        cosmos_budget = [int(config.get("COSMOS_MAX_SCENES") or 3)]   # AI video clips per video, when available
+    except ValueError:
+        cosmos_budget = [3]
     for i, sc in enumerate(scenes):
         update(40 + 40 * i / n, f"Visuals {i + 1}/{n}")
-        src, kind = visuals.fetch(i, sc, s.get("visual_mode", "stock"), workdir, used, log)
-        log(f"scene {i + 1}: {kind}")
-        blank += kind == "none"
+        d = durs[i]
+        # fast-cut pacing: a 3-shot hook, then ~2.5 s shots
+        n_shots = 3 if i == 0 and d >= 4.5 else (2 if d >= 3.2 else 1)
+        shots = visuals.fetch_scene(i, sc, s.get("visual_mode", "stock"), workdir, used, log,
+                                    n_shots, d / n_shots, cosmos_budget)
+        log(f"scene {i + 1}: " + ", ".join(k for _, k in shots))
+        blank += all(k == "none" for _, k in shots)
         if have_sources and blank > n / 3:
             raise RuntimeError(f"{blank} of {n} scenes got no picture (network or API problem), so the video "
                                f"was stopped instead of coming out mostly blank. Retry later.")
-        clips.append(render.scene_clip(src, kind, durs[i], workdir / f"s_{i:02d}.mp4", i))
+        clips.append(render.scene_from_shots(shots, d, workdir / f"s_{i:02d}.mp4", i, workdir))
 
     # 3. assemble
     update(82, "Assembling")

@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import (auth, config, db, jobs, llm, migrate, pipeline, publish, scheduler, storage, store,
-               topics, tts)
+               topics, tts, visuals)
 
 app = FastAPI(title="Faceless Shorts")
 app.mount("/static", StaticFiles(directory=config.STATIC), name="static")
@@ -552,8 +552,21 @@ def test_settings(_: dict = Depends(admin_user)):
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:120]}")
         return "token works"
 
+    def nvidia():
+        k = _need("NVIDIA_API_KEY")
+        h = {"Authorization": f"Bearer {k}", "Accept": "application/json", "Content-Type": "application/json"}
+        httpx.get("https://integrate.api.nvidia.com/v1/models", headers=h, timeout=20).raise_for_status()
+        # empty request: 404 = Cosmos API still closed; 4xx validation error = open (nothing is generated)
+        r = httpx.post(visuals.COSMOS_URL, headers=h, json={}, timeout=30)
+        if r.status_code == 404:
+            return "key works, but NVIDIA hasn't opened the Cosmos3-nano API yet (404). It will switch on automatically."
+        if r.status_code in (400, 422):
+            visuals._cosmos_state.update(available=None, checked=0)
+            return "key works and the Cosmos3-nano API is open: AI clips will be used in AI/mix modes"
+        raise RuntimeError(f"Cosmos endpoint: HTTP {r.status_code} {r.text[:120]}")
+
     checks = {"GEMINI_API_KEY": gemini, "GROQ_API_KEY": groq, "OPENROUTER_API_KEY": openrouter,
-              "DEEPSEEK_API_KEY": deepseek, "PIXABAY_API_KEY": pixabay,
+              "DEEPSEEK_API_KEY": deepseek, "NVIDIA_API_KEY": nvidia, "PIXABAY_API_KEY": pixabay,
               "PEXELS_API_KEY": pexels, "CLOUDFLARE_API_TOKEN": cloudflare, "storage": storage.check}
     out = {k: _check(fn) for k, fn in checks.items()}
     for p in publish.PLATFORMS:
