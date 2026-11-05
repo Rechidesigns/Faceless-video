@@ -105,6 +105,26 @@ def concat(files: list[Path], out: Path, workdir: Path) -> Path:
     return out
 
 
+TARGET_LUFS = -14.0
+
+
+def loudness_gain(audio: Path) -> float:
+    """dB to add so `audio` lands near TARGET_LUFS. 0 if it can't be measured (e.g. silence)."""
+    p = subprocess.run([config.FFMPEG, "-hide_banner", "-nostats", "-i", str(audio),
+                        "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True, errors="replace")
+    integrated = None
+    for line in p.stderr.splitlines():   # the summary at the end has "I:   -23.4 LUFS"
+        line = line.strip()
+        if line.startswith("I:") and line.endswith("LUFS"):
+            try:
+                integrated = float(line[2:-4])
+            except ValueError:
+                pass
+    if integrated is None or integrated != integrated or integrated <= -69:   # missing, NaN or silence
+        return 0.0
+    return max(-10.0, min(20.0, TARGET_LUFS - integrated))
+
+
 def final_mix(workdir: Path, video: Path, narration: Path, ass: Path | None,
               music: Path | None, music_volume: float, out: Path) -> Path:
     # The voiceover sets the length: if the picture is short it holds its last frame, it never cuts the voice.
@@ -122,9 +142,10 @@ def final_mix(workdir: Path, video: Path, narration: Path, ass: Path | None,
         except ValueError:  # different drive on Windows: rely on system fonts
             pass
         vchain = f"[0:v]{hold},{sub}[v]"
-    # Loudness-normalize to -14 LUFS (the TikTok / YouTube / Instagram standard) so the voice isn't quiet.
-    # loudnorm resamples internally, so convert back to 44.1 kHz afterwards.
-    norm = "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100"
+    # Bring the voice to about -14 LUFS (the TikTok / YouTube / Instagram standard) so it isn't quiet.
+    # Measured first, then a plain gain + peak limiter: the one-pass loudnorm filter can emit NaN samples,
+    # which makes the AAC encoder fail with "Input contains (near) NaN/+-Inf".
+    norm = f"volume={loudness_gain(narration):.2f}dB,alimiter=limit=0.84:level=0"
     if music:
         achain = (f"[2:a]volume={music_volume:.2f}[m];"
                   f"[1:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,{norm}[a]")
