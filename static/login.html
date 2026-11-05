@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faceless Shorts</title>
+<style>
+  :root { --bg:#0d0f14; --panel:#161a22; --panel2:#1d222c; --line:#2a303c; --text:#e8eaf0; --muted:#8b93a5;
+          --accent:#ffcf3f; --accent-ink:#1a1400; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--text);
+         font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:28px; width:min(380px,100%); }
+  h1 { font-size:22px; margin:0 0 4px; } h1 span { color:var(--accent); }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:14px; }
+  .tabs { display:flex; gap:6px; margin-bottom:18px; }
+  .tabs button { flex:1; background:var(--panel2); color:var(--text); border:1px solid var(--line); }
+  .tabs button.active { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  label { display:block; font-size:12px; color:var(--muted); margin:0 0 4px; }
+  input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--panel2);
+          color:var(--text); font:inherit; margin-bottom:12px; }
+  input:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  button { font:inherit; font-weight:600; border-radius:8px; padding:10px 14px; cursor:pointer; border:0; }
+  .go { width:100%; background:var(--accent); color:var(--accent-ink); margin-top:4px; }
+  .go:disabled { opacity:.6; cursor:wait; }
+  .err { color:var(--bad); font-size:14px; margin-top:10px; }
+  .ok { color:#3ecf8e; font-size:14px; margin-top:10px; }
+  .err:empty, .ok:empty { display:none; }
+  .hint { color:var(--muted); font-size:12px; margin-top:-6px; margin-bottom:12px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<form class="card" id="form" novalidate>
+  <h1>Faceless <span>Shorts</span></h1>
+  <p class="sub">Automate your faceless video channels.</p>
+  <div class="tabs" id="tabs">
+    <button type="button" data-mode="login" class="active">Sign in</button>
+    <button type="button" data-mode="signup">Create account</button>
+  </div>
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="email" required autofocus>
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password" required minlength="8">
+  <p class="hint hidden" id="pw-hint">At least 8 characters.</p>
+  <button class="go" id="go">Sign in</button>
+  <p class="err" id="err"></p>
+  <p class="ok" id="ok"></p>
+  <p class="hint hidden" id="approval-note" style="margin-top:8px">New accounts are reviewed by the admin before first sign-in.</p>
+</form>
+<script>
+let mode = "login";
+const $ = (s) => document.querySelector(s);
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  $("#go").textContent = m === "login" ? "Sign in" : "Create account";
+  $("#password").autocomplete = m === "login" ? "current-password" : "new-password";
+  $("#pw-hint").classList.toggle("hidden", m === "login");
+  $("#approval-note").classList.toggle("hidden", m === "login" || !approvalRequired);
+  $("#err").textContent = ""; $("#ok").textContent = "";
+}
+let approvalRequired = false;
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setMode(b.dataset.mode));
+fetch("/api/auth/info").then(r => r.json()).then(i => {
+  approvalRequired = i.approval_required;
+  if (!i.signup_open) $("#tabs").classList.add("hidden");
+  setMode(mode);
+}).catch(() => {});
+if (location.hash === "#signup") setMode("signup");
+
+$("#form").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $("#email").value.trim(), password = $("#password").value;
+  if (!email || !password) { $("#err").textContent = "Enter your email and password."; return; }
+  $("#go").disabled = true; $("#err").textContent = ""; $("#ok").textContent = "";
+  try {
+    const r = await fetch(mode === "login" ? "/api/auth/login" : "/api/auth/signup", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong");
+    if (data.pending) {
+      $("#ok").textContent = data.message; $("#password").value = ""; setMode("login"); $("#ok").textContent = data.message;
+      return;
+    }
+    location.href = "/";
+  } catch (err) { $("#err").textContent = err.message; }
+  finally { $("#go").disabled = false; }
+};
+</script>
+</body>
+</html>

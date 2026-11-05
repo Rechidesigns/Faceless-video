@@ -1,0 +1,19 @@
+.venv/
+.env
+.cache/
+__pycache__/
+# local data (production uses Postgres + bucket)
+app.db
+app.db-*
+blobs/
+work/
+data/
+output/
+output.imported/
+tokens/
+tokens.imported/
+channels.json*
+settings.json*
+.secret_key
+music/*
+!music/README.txt

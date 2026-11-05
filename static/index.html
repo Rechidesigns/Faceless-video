@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faceless Shorts</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel2: #1d222c; --line: #2a303c;
+    --text: #e8eaf0; --muted: #8b93a5; --accent: #ffcf3f; --accent-ink: #1a1400;
+    --ok: #3ecf8e; --bad: #ff6b6b; --info: #6cb6ff; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+           padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 19px; letter-spacing: .2px; }
+  header h1 span { color: var(--accent); }
+  nav { display: flex; gap: 6px; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+  nav a.active { background: var(--panel2); color: var(--text); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+  .pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--panel2);
+          color: var(--muted); border: 1px solid var(--line); }
+  .pill.on { color: var(--ok); border-color: #2b5c45; }
+  .pill.off { color: var(--bad); border-color: #5c2b2b; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; padding: 20px 24px;
+         max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } .pills { margin-left: 0; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+            padding: 18px; margin-bottom: 20px; }
+  h2 { margin: 0 0 14px; font-size: 15px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  h2 b { color: var(--accent); margin-right: 6px; }
+  h3 { margin: 18px 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+  input, select, textarea { width: 100%; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: inherit; }
+  input[type=checkbox] { width: auto; accent-color: var(--accent); }
+  textarea { resize: vertical; min-height: 64px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 12px; }
+  .field { margin-bottom: 12px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); margin: 0 0 10px; cursor: pointer; }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 16px;
+           cursor: pointer; background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.danger { color: var(--bad); }
+  button:disabled { opacity: .5; cursor: wait; }
+  button.small { padding: 5px 10px; font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tabs button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label { margin: 0; cursor: pointer; }
+  .seg input { display: none; }
+  .seg span { display: inline-block; padding: 7px 12px; border-radius: 8px; background: var(--panel2);
+              border: 1px solid var(--line); color: var(--text); font-size: 14px; }
+  .seg input:checked + span { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .scene { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .scene-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .scene textarea, .scene input { background: var(--panel); }
+  .hint { font-size: 13px; color: var(--muted); }
+  .err { color: var(--bad); font-size: 14px; white-space: pre-wrap; margin-top: 10px; }
+  .ok-msg { color: var(--ok); font-size: 14px; margin-top: 10px; }
+  .ok-msg:empty, .err:empty { display: none; }
+  .hidden { display: none !important; }
+  .job { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: var(--panel2); }
+  .job.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 0 transparent; } }
+  .job-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .job-title { font-weight: 600; overflow-wrap: anywhere; }
+  .job-meta { font-size: 12px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); color: var(--info); margin-right: 4px; }
+  .bar { height: 6px; background: var(--panel); border-radius: 99px; overflow: hidden; margin: 10px 0 6px; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .job video { width: 100%; max-height: 520px; aspect-ratio: 9/16; background: #000; border-radius: 8px; margin-top: 10px; }
+  .job details { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .job pre { white-space: pre-wrap; max-height: 180px; overflow: auto; background: var(--panel); padding: 8px; border-radius: 6px; }
+  .pub { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .pub a { color: var(--info); }
+  .status-done { color: var(--ok); } .status-error { color: var(--bad); } .status-running, .status-queued, .status-review, .status-uploading { color: var(--accent); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 0; }
+  .chan { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .chan-name { font-size: 17px; font-weight: 700; }
+  .chan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
+  .chan-box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 13px; }
+  .chan-box b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 4px; }
+  .chan-box .actions { margin-top: 8px; gap: 6px; }
+  .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+  .user-box #me-email { font-weight: 600; overflow-wrap: anywhere; }
+  table.users { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.users th, table.users td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.users th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  table.users input { width: 70px; padding: 4px 6px; }
+  .table-wrap { overflow-x: auto; }
+  .note { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--info); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Faceless <span>Shorts</span></h1>
+  <nav><a href="#create" id="nav-create" class="active">Create</a><a href="#channels" id="nav-channels">Channels</a><a href="#settings" id="nav-settings" class="hidden">Settings</a></nav>
+  <div class="pills" id="pills"></div>
+  <div class="user-box"><span id="me-email"></span><span class="hint" id="me-usage"></span>
+    <button class="small" id="btn-password">Password</button><button class="small" id="btn-logout">Sign out</button></div>
+</header>
+
+<main>
+  <div>
+    <!-- ================= CREATE ================= -->
+    <div id="view-create">
+      <section>
+        <div class="tabs">
+          <button class="active" data-tab="single">One video</button>
+          <button data-tab="batch">Batch</button>
+        </div>
+
+        <div class="field">
+          <label for="create-channel">Channel (optional: uses its niche and lets you post the video)</label>
+          <select id="create-channel"><option value="">None, just make the video</option></select>
+        </div>
+
+        <div id="tab-single">
+          <h2><b>1</b>Idea</h2>
+          <div class="field">
+            <label for="topic">Topic</label>
+            <textarea id="topic" placeholder="e.g. 5 weird facts about octopuses"></textarea>
+          </div>
+        </div>
+        <div id="tab-batch" class="hidden">
+          <h2><b>1</b>Topics</h2>
+          <div class="field">
+            <label for="topics">One topic per line (max 20). Each is scripted and rendered automatically.</label>
+            <textarea id="topics" rows="6" placeholder="Why the Moon is drifting away&#10;The deadliest animal on Earth&#10;How honey never spoils"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div><label for="duration">Length</label><select id="duration" class="sel-duration"></select></div>
+          <div><label for="style">Tone</label><select id="style" class="sel-style"></select></div>
+          <div><label for="language">Language</label><select id="language" class="sel-language"></select></div>
+        </div>
+        <div class="actions" id="single-actions">
+          <button class="primary" id="btn-quick">🎬 Make video now</button>
+          <button id="btn-script">✏️ Write script to edit first</button>
+        </div>
+        <div class="actions hidden" id="batch-actions">
+          <button class="primary" id="btn-batch">Queue all</button>
+        </div>
+        <div class="ok-msg" id="idea-ok"></div>
+        <div class="err" id="idea-err"></div>
+      </section>
+
+      <section id="editor" class="hidden">
+        <h2><b>2</b>Script <span class="hint" id="model-used"></span></h2>
+        <div class="field"><label for="title">Title</label><input id="title"></div>
+        <div id="scenes"></div>
+        <div class="actions" style="margin-bottom:14px"><button class="small" id="btn-add-scene">+ Add scene</button>
+          <span class="hint" id="word-count"></span></div>
+        <div class="field"><label for="description">Description</label><textarea id="description"></textarea></div>
+        <div class="field"><label for="hashtags">Hashtags</label><input id="hashtags"></div>
+      </section>
+
+      <section>
+        <h2><b>3</b>Video settings</h2>
+        <div id="settings-create"></div>
+        <div class="actions">
+          <button class="primary" id="btn-render" disabled>Render video</button>
+          <span class="hint">Used after “Write script to edit first”. “Make video now” and Batch use these settings too.</span>
+        </div>
+        <div class="ok-msg" id="render-ok"></div>
+        <div class="err" id="render-err"></div>
+      </section>
+    </div>
+
+    <!-- ================= CHANNELS ================= -->
+    <div id="view-channels" class="hidden">
+      <section id="channel-list-section">
+        <div class="actions" style="justify-content:space-between;margin-bottom:14px">
+          <h2 style="margin:0">Channels</h2>
+          <button class="primary" id="btn-new-channel">+ New channel</button>
+        </div>
+        <div class="note">Each channel has a niche. On schedule, it picks the next topic from its queue (the AI refills it with fresh ideas
+          for the niche), makes the video, then posts it to YouTube or sends it to your TikTok drafts, either automatically or after you approve it.</div>
+        <div id="channel-list"><div class="empty">No channels yet. Create one for each faceless channel you run.</div></div>
+      </section>
+
+      <section id="channel-editor" class="hidden">
+        <h2 id="ce-heading">New channel</h2>
+        <div class="row">
+          <div><label for="ce-name">Channel name</label><input id="ce-name" placeholder="e.g. Ancient Mysteries"></div>
+          <div><label for="ce-language">Language</label><select id="ce-language" class="sel-language"></select></div>
+        </div>
+        <div class="field"><label for="ce-niche">Niche (what the channel is about)</label>
+          <textarea id="ce-niche" placeholder="e.g. Early humans and prehistoric life: how our ancestors lived, hunted, survived and evolved"></textarea></div>
+        <div class="field"><label for="ce-notes">Guidelines (optional: audience, things to always/never do, call to action)</label>
+          <textarea id="ce-notes" placeholder="e.g. Audience is curious teens and adults. End every video with 'Follow for more ancient secrets.' Avoid gore."></textarea></div>
+        <div class="row">
+          <div><label for="ce-duration">Length</label><select id="ce-duration" class="sel-duration"></select></div>
+          <div><label for="ce-style">Tone</label><select id="ce-style" class="sel-style"></select></div>
+        </div>
+
+        <h3>Video style</h3>
+        <div id="settings-channel"></div>
+
+        <h3>Schedule</h3>
+        <label class="check"><input type="checkbox" id="ce-sched-on"> Make videos automatically</label>
+        <div class="row">
+          <div><label for="ce-times">Times each day (comma separated, 24h)</label><input id="ce-times" value="09:00" placeholder="09:00, 18:00"></div>
+          <div><label for="ce-tz">Timezone</label><input id="ce-tz" list="tz-list"><datalist id="tz-list"></datalist></div>
+        </div>
+
+        <h3>Publishing</h3>
+        <div class="row">
+          <div class="chan-box">
+            <label class="check"><input type="checkbox" id="ce-yt-on"> Post to YouTube Shorts</label>
+            <label for="ce-yt-mode">When a video is ready</label>
+            <select id="ce-yt-mode" style="margin-bottom:8px"><option value="review">Wait for my approval</option><option value="auto">Post automatically</option></select>
+            <label for="ce-yt-privacy">Visibility</label>
+            <select id="ce-yt-privacy"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option></select>
+          </div>
+          <div class="chan-box">
+            <label class="check"><input type="checkbox" id="ce-tt-on"> Send to TikTok drafts</label>
+            <label for="ce-tt-mode">When a video is ready</label>
+            <select id="ce-tt-mode"><option value="auto">Send automatically</option><option value="review">Wait for my approval</option></select>
+            <p class="hint" style="margin:8px 0 0">TikTok gets the video in your inbox; you add the caption and tap Post.</p>
+          </div>
+          <div class="chan-box">
+            <label class="check"><input type="checkbox" id="ce-ig-on"> Post to Instagram Reels</label>
+            <label for="ce-ig-mode">When a video is ready</label>
+            <select id="ce-ig-mode"><option value="review">Wait for my approval</option><option value="auto">Post automatically</option></select>
+            <p class="hint" style="margin:8px 0 0">Needs an Instagram Business or Creator account. Caption and hashtags are added for you.</p>
+          </div>
+        </div>
+        <p class="hint">Connect the accounts on the channel card after saving. Every video can also be downloaded manually.</p>
+
+        <h3>Topic queue</h3>
+        <div class="field"><label for="ce-queue">Upcoming topics, one per line (used top to bottom; the AI adds more when it runs out)</label>
+          <textarea id="ce-queue" rows="6"></textarea></div>
+
+        <div class="actions">
+          <button class="primary" id="ce-save">Save channel</button>
+          <button id="ce-cancel">Cancel</button>
+        </div>
+        <div class="err" id="ce-err"></div>
+      </section>
+    </div>
+
+    <!-- ================= SETTINGS ================= -->
+    <div id="view-settings" class="hidden">
+      <section>
+        <div class="actions" style="justify-content:space-between;margin-bottom:14px">
+          <h2 style="margin:0">Settings</h2>
+          <button id="btn-test-keys">🔍 Test all keys</button>
+        </div>
+        <div class="note" id="infra-info"></div>
+        <div class="note">Only admins see this page. Keys saved here are shared by all users, stored in the database, and override
+          Railway Variables / .env. Use "remove saved" to go back to the Railway/.env value. Saved secrets are shown masked.</div>
+        <div id="settings-form"></div>
+        <div class="actions"><button class="primary" id="btn-save-settings">Save settings</button></div>
+        <div class="ok-msg" id="settings-ok"></div>
+        <div class="err" id="settings-err"></div>
+      </section>
+      <section>
+        <h2>Users</h2>
+        <p class="hint" style="margin-top:0">Daily limit: leave empty to use the site default. Admins have no limit.</p>
+        <div class="table-wrap" id="users-table"></div>
+        <div class="err" id="users-err"></div>
+      </section>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Videos</h2>
+      <div class="field" style="margin-bottom:10px"><select id="job-filter"><option value="">All videos</option></select></div>
+      <div id="jobs"><div class="empty">No videos yet.</div></div>
+    </section>
+  </aside>
+</main>
+
+<template id="settings-tpl">
+  <div class="row">
+    <div><label>Voice</label><select data-k="voice"><option>Loading voices…</option></select></div>
+    <div><label>Speed</label>
+      <select data-k="rate"><option value="-10%">Slower</option><option value="+0%">Normal</option>
+        <option value="+5%" selected>A bit faster</option><option value="+15%">Fast</option><option value="+25%">Very fast</option></select></div>
+    <div style="display:flex;align-items:flex-end"><button class="small" data-preview style="width:100%">▶ Preview voice</button></div>
+  </div>
+  <div class="field"><label>Visuals</label>
+    <div class="seg" data-k="visual_mode">
+      <label><input type="radio" value="stock"><span>Stock footage</span></label>
+      <label><input type="radio" value="ai"><span>AI images</span></label>
+      <label><input type="radio" value="mixed" checked><span>Both (alternate)</span></label>
+    </div></div>
+  <div class="field"><label>Captions</label>
+    <div class="seg" data-k="caption_style">
+      <label><input type="radio" value="bold" checked><span>Bold, word highlight</span></label>
+      <label><input type="radio" value="minimal"><span>Minimal</span></label>
+      <label><input type="radio" value="none"><span>None</span></label>
+    </div></div>
+  <div class="row">
+    <div><label>Background music</label><select data-k="music"></select></div>
+    <div><label>Music volume</label><input type="range" data-k="music_volume" min="0" max="0.4" step="0.02" value="0.12"></div>
+  </div>
+  <p class="hint" data-music-hint></p>
+</template>
+
+<audio id="preview-audio" class="hidden"></audio>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const LANGS = [["English","en"],["Spanish","es"],["French","fr"],["German","de"],["Portuguese","pt"],
+  ["Italian","it"],["Hindi","hi"],["Arabic","ar"],["Indonesian","id"],["Turkish","tr"],["Russian","ru"],
+  ["Japanese","ja"],["Korean","ko"],["Chinese","zh"],["Dutch","nl"],["Polish","pl"],["Swahili","sw"]];
+const STYLES = ["engaging, curious","dramatic storytelling","motivational","funny, casual","calm, educational","mysterious, creepy"];
+const DURATIONS = [[30,"~30 s"],[45,"~45 s"],[60,"~60 s"],[90,"~90 s"]];
+const PREFERRED = ["en-US-AndrewMultilingualNeural","en-US-ChristopherNeural","en-US-BrianMultilingualNeural",
+  "en-US-AvaMultilingualNeural","en-US-EmmaMultilingualNeural"];
+const KEY_LABELS = {GEMINI_API_KEY:"Gemini", GROQ_API_KEY:"Groq", OPENROUTER_API_KEY:"OpenRouter", DEEPSEEK_API_KEY:"DeepSeek", PEXELS_API_KEY:"Pexels",
+  PIXABAY_API_KEY:"Pixabay", CLOUDFLARE_ACCOUNT_ID:"CF account", CLOUDFLARE_API_TOKEN:"CF token"};
+const PLATFORM = { youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram" };
+const PUB_LABEL = { youtube: "Post to YouTube", tiktok: "Send to TikTok", instagram: "Post to Instagram" };
+let allVoices = [], status = { music: [] }, channels = [], editingId = null, tab = "single";
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  if (res.status === 401) { location.href = "/login"; throw new Error("Login required"); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : res.statusText);
+  return data;
+}
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const langCode = (name) => (LANGS.find(l => l[0] === name) || ["", "en"])[1];
+const fmtTime = (ts) => new Date(ts * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
+
+async function busy(btn, fn) {
+  btn.disabled = true; const t = btn.textContent; btn.textContent = "Working…";
+  try { await fn(); } finally { btn.disabled = false; btn.textContent = t; }
+}
+
+// ---------- static selects ----------
+$$(".sel-language").forEach(s => s.innerHTML = LANGS.map(([n]) => `<option>${n}</option>`).join(""));
+$$(".sel-style").forEach(s => s.innerHTML = STYLES.map(x => `<option>${x}</option>`).join(""));
+$$(".sel-duration").forEach(s => { s.innerHTML = DURATIONS.map(([v, l]) => `<option value="${v}">${l}</option>`).join(""); s.value = "45"; });
+try { $("#tz-list").innerHTML = Intl.supportedValuesOf("timeZone").map(z => `<option value="${z}">`).join(""); } catch {}
+
+// ---------- reusable "video settings" block ----------
+function makeSettings(container, langSelect) {
+  container.appendChild($("#settings-tpl").content.cloneNode(true));
+  const uid = Math.random().toString(36).slice(2);
+  $$(".seg", container).forEach(seg => $$("input", seg).forEach(i => i.name = seg.dataset.k + uid));
+  const block = {
+    el: container, lang: langSelect,
+    fillVoices() {
+      const sel = $("[data-k=voice]", container), code = langCode(langSelect.value), prev = sel.value;
+      const list = allVoices.filter(v => v.locale.startsWith(code + "-") || v.name.includes("Multilingual"));
+      list.sort((a, b) => (b.locale.startsWith(code) - a.locale.startsWith(code)) || a.name.localeCompare(b.name));
+      if (!list.length) { sel.innerHTML = `<option value="en-US-AndrewMultilingualNeural">en-US-AndrewMultilingual</option>`; return; }
+      sel.innerHTML = list.map(v => `<option value="${v.name}">${v.name.replace("Neural", "")} · ${v.gender}</option>`).join("");
+      const pick = [prev, ...PREFERRED].find(n => list.some(v => v.name === n && v.locale.startsWith(code)))
+                || (list.find(v => v.locale.startsWith(code)) || list[0]).name;
+      sel.value = pick;
+    },
+    fillMusic() {
+      const m = $("[data-k=music]", container), cur = m.value;
+      m.innerHTML = `<option value="none">None</option>` + (status.music.length ? `<option value="random">Random from music folder</option>` : "")
+        + status.music.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join("");
+      m.value = cur && [...m.options].some(o => o.value === cur) ? cur : (status.music.length ? "random" : "none");
+      $("[data-music-hint]", container).textContent = status.music.length ? "" :
+        "Tip: put royalty-free .mp3 files in the 'music' folder (e.g. YouTube Audio Library) to enable background music.";
+    },
+    get() {
+      const radio = (k) => ($(`[data-k=${k}] input:checked`, container) || {}).value;
+      return { voice: $("[data-k=voice]", container).value, rate: $("[data-k=rate]", container).value,
+               visual_mode: radio("visual_mode"), caption_style: radio("caption_style"),
+               music: $("[data-k=music]", container).value, music_volume: +$("[data-k=music_volume]", container).value };
+    },
+    set(s) {
+      if (!s) return;
+      if (s.voice) { const sel = $("[data-k=voice]", container); if (![...sel.options].some(o => o.value === s.voice)) sel.insertAdjacentHTML("afterbegin", `<option value="${esc(s.voice)}">${esc(s.voice)}</option>`); sel.value = s.voice; }
+      if (s.rate) $("[data-k=rate]", container).value = s.rate;
+      for (const k of ["visual_mode", "caption_style"]) { const i = $(`[data-k=${k}] input[value="${s[k]}"]`, container); if (i) i.checked = true; }
+      if (s.music) { const m = $("[data-k=music]", container); if ([...m.options].some(o => o.value === s.music)) m.value = s.music; }
+      if (s.music_volume != null) $("[data-k=music_volume]", container).value = s.music_volume;
+    },
+  };
+  $("[data-preview]", container).onclick = async (e) => {
+    const btn = e.currentTarget, s = block.get(), a = $("#preview-audio");
+    btn.disabled = true; btn.textContent = "Loading…";
+    try {
+      const res = await fetch(`/api/voice-preview?voice=${encodeURIComponent(s.voice)}&rate=${encodeURIComponent(s.rate)}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Preview failed");
+      const blob = await res.blob();
+      if (blob.size < 1000) throw new Error("The voice service returned no audio. Try again.");
+      if (a.dataset.url) URL.revokeObjectURL(a.dataset.url);
+      a.dataset.url = a.src = URL.createObjectURL(blob);
+      a.volume = 1;
+      await a.play();
+      btn.textContent = "▶ Playing…";
+      a.onended = () => { btn.textContent = "▶ Preview voice"; };
+    } catch (err) {
+      btn.textContent = "▶ Preview voice";
+      alert(err.name === "NotAllowedError" ? "Your browser blocked audio playback. Click the button again." : err.message);
+    } finally { btn.disabled = false; if (btn.textContent === "Loading…") btn.textContent = "▶ Preview voice"; }
+  };
+  langSelect.addEventListener("change", () => block.fillVoices());
+  return block;
+}
+const createSettings = makeSettings($("#settings-create"), $("#language"));
+const channelSettings = makeSettings($("#settings-channel"), $("#ce-language"));
+
+// ---------- status ----------
+let me = null;
+async function loadMe() {
+  me = await api("/api/me");
+  $("#me-email").textContent = me.email;
+  $("#me-usage").textContent = me.limit ? `· ${me.videos_today}/${me.limit} videos today` : (me.is_admin ? "· admin" : "");
+  $("#nav-settings").classList.toggle("hidden", !me.is_admin);
+  $("#nav-settings").innerHTML = "Settings" + (me.pending_users ? ` <span class="pill off" title="Users waiting for approval">${me.pending_users} pending</span>` : "");
+}
+$("#btn-logout").onclick = async () => { await api("/api/auth/logout", { method: "POST" }).catch(() => {}); location.href = "/login"; };
+$("#btn-password").onclick = async () => {
+  const old = prompt("Current password:"); if (!old) return;
+  const nw = prompt("New password (at least 8 characters):"); if (!nw) return;
+  try { await api("/api/auth/password", { method: "POST", body: JSON.stringify({ old, new: nw }) }); alert("Password changed. Other devices were signed out."); }
+  catch (e) { alert(e.message); }
+};
+
+async function loadStatus() {
+  status = await api("/api/status");
+  if (!status.keys) { $("#pills").innerHTML = ""; createSettings.fillMusic(); channelSettings.fillMusic(); return; }
+  const AI = ["GEMINI_API_KEY", "GROQ_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"];
+  const optional = (k) => (k === "PEXELS_API_KEY" && status.keys.PIXABAY_API_KEY) || (k === "PIXABAY_API_KEY" && status.keys.PEXELS_API_KEY)
+                       || (AI.includes(k) && AI.some(o => o !== k && status.keys[o]));
+  const pills = Object.entries(status.keys).map(([k, on]) => on
+    ? `<span class="pill on" title="${k}">✓ ${KEY_LABELS[k] || k}</span>`
+    : optional(k) ? `<span class="pill" title="${k} not set (optional)">– ${KEY_LABELS[k] || k}</span>`
+    : `<span class="pill off" title="${k} not set">✕ ${KEY_LABELS[k] || k}</span>`);
+  pills.push(`<span class="pill ${status.ffmpeg ? "on" : "off"}">${status.ffmpeg ? "✓" : "✕"} ffmpeg</span>`);
+  for (const p of Object.keys(PLATFORM)) {
+    const ok = status[p + "_ready"];
+    pills.push(`<a href="#settings" class="pill ${ok ? "on" : ""}" style="text-decoration:none" title="App keys for ${PLATFORM[p]}">${ok ? "✓" : "–"} ${PLATFORM[p]} app</a>`);
+  }
+  $("#pills").innerHTML = pills.join("");
+  createSettings.fillMusic(); channelSettings.fillMusic();
+}
+
+async function loadVoices(attempt = 0) {
+  try { allVoices = await api("/api/voices"); }
+  catch { if (attempt < 20) setTimeout(() => loadVoices(attempt + 1), Math.min(30000, 3000 * (attempt + 1))); }  // service unreachable: keep retrying
+  createSettings.fillVoices(); channelSettings.fillVoices();
+}
+
+// ---------- views ----------
+function route() {
+  const v = ({ "#channels": "channels", "#settings": "settings" })[location.hash] || "create";
+  for (const name of ["create", "channels", "settings"]) {
+    $("#view-" + name).classList.toggle("hidden", v !== name);
+    $("#nav-" + name).classList.toggle("active", v === name);
+  }
+  if (v === "channels") loadChannels();
+  if (v === "settings") { loadSettings(); loadUsers(); }
+}
+window.addEventListener("hashchange", route);
+
+// ---------- create: script editor ----------
+function sceneHTML(sc, i) {
+  return `<div class="scene">
+    <div class="scene-head"><span>Scene ${i + 1}</span>
+      <span><button class="small" data-up="${i}" title="Move up">↑</button>
+      <button class="small" data-del="${i}" title="Delete">✕</button></span></div>
+    <div class="field"><label>Narration</label><textarea class="narration">${esc(sc.narration)}</textarea></div>
+    <div class="row" style="margin-bottom:0">
+      <div><label>Stock footage search</label><input class="stock" value="${esc(sc.stock_query)}"></div>
+      <div><label>AI image prompt</label><input class="prompt" value="${esc(sc.image_prompt)}"></div>
+    </div></div>`;
+}
+function showScript(s) {
+  $("#editor").classList.remove("hidden");
+  $("#title").value = s.title || "";
+  $("#description").value = s.description || "";
+  $("#hashtags").value = (s.hashtags || []).join(" ");
+  $("#model-used").textContent = s.model ? `· written by ${s.model}` : "";
+  $("#scenes").innerHTML = s.scenes.map(sceneHTML).join("");
+  $("#btn-render").disabled = false;
+  updateWordCount();
+}
+function readScript() {
+  const scenes = $$("#scenes .scene").map(el => ({
+    narration: $(".narration", el).value.trim(), stock_query: $(".stock", el).value.trim(), image_prompt: $(".prompt", el).value.trim(),
+  })).filter(s => s.narration);
+  return { title: $("#title").value.trim(), scenes, description: $("#description").value.trim(),
+           hashtags: $("#hashtags").value.split(/\s+/).filter(Boolean) };
+}
+function updateWordCount() {
+  const words = readScript().scenes.reduce((n, s) => n + s.narration.split(/\s+/).filter(Boolean).length, 0);
+  $("#word-count").textContent = `${words} words ≈ ${Math.round(words / 2.6)} s`;
+}
+$("#scenes").addEventListener("input", updateWordCount);
+$("#scenes").addEventListener("click", (e) => {
+  const s = readScript();
+  if (e.target.dataset.del !== undefined) { s.scenes.splice(+e.target.dataset.del, 1); showScript(s); }
+  if (e.target.dataset.up !== undefined) { const i = +e.target.dataset.up; if (i > 0) { [s.scenes[i - 1], s.scenes[i]] = [s.scenes[i], s.scenes[i - 1]]; showScript(s); } }
+});
+$("#btn-add-scene").onclick = () => { const s = readScript(); s.scenes.push({ narration: "", stock_query: "", image_prompt: "" }); showScript(s); };
+
+// ---------- create: actions ----------
+const ideaBody = () => ({ duration: +$("#duration").value, style: $("#style").value, language: $("#language").value,
+                          channel_id: $("#create-channel").value || null });
+
+$("#create-channel").onchange = () => {
+  const ch = channels.find(c => c.id === $("#create-channel").value);
+  if (!ch) return;
+  $("#duration").value = ch.duration; $("#style").value = ch.style; $("#language").value = ch.language;
+  createSettings.fillVoices(); createSettings.set(ch.settings);
+};
+
+function started(list, msg, okEl = "#idea-ok") {
+  $(okEl).textContent = msg;
+  setTimeout(() => { if ($(okEl).textContent === msg) $(okEl).textContent = ""; }, 12000);
+  pollJobs().then(() => (list || []).forEach(j => {
+    const el = document.getElementById("job-" + j.id);
+    if (el) { el.classList.add("flash"); el.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+  }));
+}
+$("#btn-script").onclick = () => busy($("#btn-script"), async () => {
+  $("#idea-err").textContent = "";
+  const topic = $("#topic").value.trim();
+  if (!topic) { $("#idea-err").textContent = "Enter a topic first."; return; }
+  $("#idea-ok").textContent = "Writing script… this can take up to a minute.";
+  try { showScript(await api("/api/script", { method: "POST", body: JSON.stringify({ topic, ...ideaBody() }) }));
+        $("#idea-ok").textContent = "✓ Script ready below. Edit it, then click “Render video” at the bottom.";
+        $("#editor").scrollIntoView({ behavior: "smooth" }); }
+  catch (e) { $("#idea-ok").textContent = ""; $("#idea-err").textContent = e.message; }
+});
+$("#btn-quick").onclick = () => busy($("#btn-quick"), async () => {
+  $("#idea-err").textContent = "";
+  const topic = $("#topic").value.trim();
+  if (!topic) { $("#idea-err").textContent = "Enter a topic first."; return; }
+  try { const list = await api("/api/auto", { method: "POST", body: JSON.stringify({ topics: [topic], ...ideaBody(), settings: createSettings.get() }) });
+        started(list, "✓ Started! Watch progress in the Videos panel → (about 3–4 minutes)."); }
+  catch (e) { $("#idea-err").textContent = e.message; }
+});
+$("#btn-batch").onclick = () => busy($("#btn-batch"), async () => {
+  $("#idea-err").textContent = "";
+  const topics = $("#topics").value.split("\n").map(t => t.trim()).filter(Boolean);
+  if (!topics.length) { $("#idea-err").textContent = "Add at least one topic."; return; }
+  try { const list = await api("/api/auto", { method: "POST", body: JSON.stringify({ topics, ...ideaBody(), settings: createSettings.get() }) });
+        started(list, `✓ Queued ${list.length} video(s). They render one after another →`); }
+  catch (e) { $("#idea-err").textContent = e.message; }
+});
+$("#btn-render").onclick = () => busy($("#btn-render"), async () => {
+  $("#render-err").textContent = "";
+  const script = readScript();
+  if (!script.scenes.length) { $("#render-err").textContent = "The script has no scenes."; return; }
+  try { const job = await api("/api/render", { method: "POST", body: JSON.stringify({ script, settings: createSettings.get(), channel_id: $("#create-channel").value || null }) });
+        started([job], "✓ Rendering started. Watch the Videos panel →", "#render-ok"); }
+  catch (e) { $("#render-err").textContent = e.message; }
+});
+$$(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  $$(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  for (const [id, t] of [["#tab-single", "single"], ["#single-actions", "single"], ["#tab-batch", "batch"], ["#batch-actions", "batch"]])
+    $(id).classList.toggle("hidden", tab !== t);
+});
+
+// ---------- channels ----------
+async function loadChannels() {
+  try { channels = await api("/api/channels"); } catch { return; }
+  const opts = channels.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  const cc = $("#create-channel"), cv = cc.value; cc.innerHTML = `<option value="">None, just make the video</option>` + opts; cc.value = cv;
+  const jf = $("#job-filter"), jv = jf.value; jf.innerHTML = `<option value="">All videos</option>` + opts; jf.value = jv;
+  const box = $("#channel-list");
+  if (!channels.length) { box.innerHTML = `<div class="empty">No channels yet. Create one for each faceless channel you run.</div>`; return; }
+  box.innerHTML = channels.map(channelHTML).join("");
+}
+
+function platformBox(c, p) {
+  const cfg = c[p] || {}, connected = c.connected[p], ready = status[p + "_ready"];
+  const what = p === "youtube" ? (cfg.mode === "auto" ? `posts automatically (${cfg.privacy})` : `waits for approval (${cfg.privacy})`)
+             : p === "tiktok" ? (cfg.mode === "auto" ? "sends to drafts automatically" : "waits for approval")
+             : (cfg.mode === "auto" ? "posts automatically" : "waits for approval");
+  let body;
+  if (!ready) body = `<span class="hint">Add the ${PLATFORM[p]} app keys first.</span><div class="actions"><a href="#settings"><button class="small">Open Settings</button></a></div>`;
+  else if (connected) body = `✓ ${esc(cfg.account?.title || "Connected")}<div class="actions">
+      <a href="/oauth/${p}/start?channel=${c.id}"><button class="small">Reconnect</button></a>
+      <button class="small danger" data-disconnect="${p}" data-id="${c.id}">Disconnect</button></div>`;
+  else body = `<span class="status-error">Not connected</span><div class="actions">
+      <a href="/oauth/${p}/start?channel=${c.id}"><button class="small primary">Connect ${PLATFORM[p]}</button></a></div>`;
+  return `<div class="chan-box"><b>${PLATFORM[p]} ${cfg.enabled ? `· ${what}` : "· off"}</b>${body}</div>`;
+}
+
+function channelHTML(c) {
+  const s = c.schedule;
+  const sched = s.enabled ? `${s.times.join(", ")} (${esc(s.timezone)})<br>Next: ${c.next_run ? fmtTime(c.next_run) : "—"}` : "Off (only when you click Run now)";
+  return `<div class="chan">
+    <div class="job-top"><div><div class="chan-name">${esc(c.name)}</div><div class="hint">${esc(c.niche) || "<i>No niche set</i>"}</div></div>
+      <button class="small" data-edit="${c.id}">Edit</button></div>
+    <div class="chan-grid">
+      <div class="chan-box"><b>Schedule</b>${sched}</div>
+      <div class="chan-box"><b>Topic queue · ${c.queue.length} waiting · ${c.used.length} used</b>
+        ${c.queue.length ? esc(c.queue[0]) + (c.queue.length > 1 ? ` <span class="hint">+${c.queue.length - 1} more</span>` : "") : `<span class="hint">Empty: AI will brainstorm when needed</span>`}
+        <div class="actions"><button class="small" data-topics="${c.id}">✨ Brainstorm 10 topics</button></div></div>
+      ${platformBox(c, "youtube")}
+      ${platformBox(c, "tiktok")}
+      ${platformBox(c, "instagram")}
+    </div>
+    <div class="actions">
+      <button class="primary small" data-run="${c.id}">🎬 Make next video now</button>
+      <button class="small" data-viewjobs="${c.id}">Show its videos</button>
+      <button class="small danger" data-delch="${c.id}">Delete channel</button>
+    </div>
+    <div class="err" id="cherr-${c.id}"></div>
+  </div>`;
+}
+
+$("#channel-list").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const d = b.dataset, errEl = (id) => $("#cherr-" + id);
+  if (d.edit) openEditor(channels.find(c => c.id === d.edit));
+  if (d.topics) busy(b, async () => { try { await api(`/api/channels/${d.topics}/topics`, { method: "POST" }); await loadChannels(); } catch (x) { errEl(d.topics).textContent = x.message; } });
+  if (d.run) busy(b, async () => { try { const j = await api(`/api/channels/${d.run}/run`, { method: "POST" }); started([j], "", "#ce-err"); } catch (x) { errEl(d.run).textContent = x.message; } });
+  if (d.viewjobs) { $("#job-filter").value = d.viewjobs; pollJobs(); }
+  if (d.delch && confirm("Delete this channel? Its videos stay in history.")) { await api(`/api/channels/${d.delch}`, { method: "DELETE" }); loadChannels(); }
+  if (d.disconnect && confirm(`Disconnect ${PLATFORM[d.disconnect]}?`)) { await api(`/api/channels/${d.id}/disconnect/${d.disconnect}`, { method: "POST" }); loadChannels(); }
+});
+
+function openEditor(c) {
+  editingId = c ? c.id : null;
+  $("#ce-heading").textContent = c ? `Edit: ${c.name}` : "New channel";
+  $("#ce-name").value = c?.name || ""; $("#ce-niche").value = c?.niche || ""; $("#ce-notes").value = c?.notes || "";
+  $("#ce-language").value = c?.language || "English"; $("#ce-duration").value = c?.duration || 45; $("#ce-style").value = c?.style || STYLES[0];
+  channelSettings.fillVoices(); channelSettings.set(c?.settings || createSettings.get());
+  $("#ce-sched-on").checked = !!c?.schedule?.enabled;
+  $("#ce-times").value = (c?.schedule?.times || ["09:00"]).join(", ");
+  $("#ce-tz").value = c?.schedule?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  $("#ce-yt-on").checked = !!c?.youtube?.enabled; $("#ce-yt-mode").value = c?.youtube?.mode || "review"; $("#ce-yt-privacy").value = c?.youtube?.privacy || "public";
+  $("#ce-tt-on").checked = !!c?.tiktok?.enabled; $("#ce-tt-mode").value = c?.tiktok?.mode || "auto";
+  $("#ce-ig-on").checked = !!c?.instagram?.enabled; $("#ce-ig-mode").value = c?.instagram?.mode || "review";
+  $("#ce-queue").value = (c?.queue || []).join("\n");
+  $("#ce-err").textContent = "";
+  $("#channel-list-section").classList.add("hidden");
+  $("#channel-editor").classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function closeEditor() { $("#channel-editor").classList.add("hidden"); $("#channel-list-section").classList.remove("hidden"); }
+$("#btn-new-channel").onclick = () => openEditor(null);
+$("#ce-cancel").onclick = closeEditor;
+$("#ce-save").onclick = () => busy($("#ce-save"), async () => {
+  $("#ce-err").textContent = "";
+  if (!$("#ce-name").value.trim() || !$("#ce-niche").value.trim()) { $("#ce-err").textContent = "Name and niche are required."; return; }
+  const body = {
+    name: $("#ce-name").value, niche: $("#ce-niche").value, notes: $("#ce-notes").value,
+    language: $("#ce-language").value, duration: +$("#ce-duration").value, style: $("#ce-style").value,
+    settings: channelSettings.get(),
+    schedule: { enabled: $("#ce-sched-on").checked, times: $("#ce-times").value.split(",").map(t => t.trim()).filter(Boolean), timezone: $("#ce-tz").value.trim() || "UTC" },
+    youtube: { enabled: $("#ce-yt-on").checked, mode: $("#ce-yt-mode").value, privacy: $("#ce-yt-privacy").value },
+    tiktok: { enabled: $("#ce-tt-on").checked, mode: $("#ce-tt-mode").value },
+    instagram: { enabled: $("#ce-ig-on").checked, mode: $("#ce-ig-mode").value },
+    queue: $("#ce-queue").value.split("\n").map(t => t.trim()).filter(Boolean),
+  };
+  try { await api(editingId ? `/api/channels/${editingId}` : "/api/channels", { method: editingId ? "PUT" : "POST", body: JSON.stringify(body) });
+        closeEditor(); loadChannels(); }
+  catch (e) { $("#ce-err").textContent = e.message; }
+});
+
+// ---------- settings ----------
+const GROUPS = [
+  { id: "users", title: "Sign-ups & limits", help: `Anyone can create an account while sign-ups are on. New users share your API keys, so keep a daily video limit.` },
+  { id: "ai", title: "AI script writing", help: `At least one key is required; the app tries them in order and moves on when one is busy.
+      Free: <a href="https://aistudio.google.com/apikey" target="_blank">Gemini</a>, <a href="https://console.groq.com/keys" target="_blank">Groq</a>,
+      <a href="https://openrouter.ai/settings/keys" target="_blank">OpenRouter</a> (free models, ~50 requests/day; uses a free DeepSeek model whenever one is offered).
+      <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek direct</a>: starter credit for new accounts, then pay-as-you-go (very cheap).` },
+  { id: "media", title: "Footage & AI images", help: `<a href="https://pixabay.com/api/docs/" target="_blank">Pixabay</a> key (shown when logged in) for stock video;
+      <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare</a> token with <i>Account → Workers AI → Edit</i> for AI images.` },
+  { id: "youtube", title: "YouTube", platform: true, steps: [
+      `Create a Google Cloud project: <a href="https://console.cloud.google.com/projectcreate" target="_blank">console.cloud.google.com/projectcreate</a>`,
+      `Enable <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank">YouTube Data API v3</a>.`,
+      `Set up the <a href="https://console.cloud.google.com/auth/overview" target="_blank">consent screen</a> (External). Under <a href="https://console.cloud.google.com/auth/branding" target="_blank">Branding</a> use the privacy/terms links below.`,
+      `Under <a href="https://console.cloud.google.com/auth/audience" target="_blank">Audience</a> click <b>Publish app → In production</b> (in Testing mode Google signs you out every 7 days).`,
+      `<a href="https://console.cloud.google.com/auth/clients" target="_blank">Create client</a> → <b>Web application</b> → add the redirect URL below → paste the client ID &amp; secret here.`,
+      `Uploads stay <b>Private</b> until Google audits your project. <a href="https://support.google.com/youtube/contact/yt_api_form" target="_blank">Request the free audit</a> to post publicly.`] },
+  { id: "tiktok", title: "TikTok (drafts)", platform: true, https: true, steps: [
+      `Create an app at <a href="https://developers.tiktok.com/apps/" target="_blank">developers.tiktok.com/apps</a>. Use the terms/privacy links below and this site as the Web URL.`,
+      `Add products <b>Login Kit</b> (redirect URL below) and <b>Content Posting API</b>. Scopes: <code>user.info.basic</code>, <code>video.upload</code>.`,
+      `Quickest: switch to <b>Sandbox</b>, add your TikTok account under <b>Target users</b>, and paste the sandbox client key &amp; secret here.`,
+      `Videos arrive in your TikTok inbox as drafts; tap the notification, paste the caption, and post.`] },
+  { id: "instagram", title: "Instagram (Reels)", platform: true, https: true, steps: [
+      `Make your Instagram a <b>Professional</b> account (Business or Creator): Instagram app → Settings → Account type and tools.`,
+      `Create a Meta app: <a href="https://developers.facebook.com/apps/creation/" target="_blank">developers.facebook.com/apps</a> → use case <b>Manage messaging &amp; content on Instagram</b>.`,
+      `In the app: <b>Instagram → API setup with Instagram login</b>. Copy the <b>Instagram app ID</b> and <b>Instagram app secret</b> here.`,
+      `Under <b>Set up Instagram business login</b>, add the redirect URL below.`,
+      `<b>App roles → Roles → Add people → Instagram Tester</b>: add your account, then accept at instagram.com → Settings → Apps and websites → Tester invites. (Development mode is enough for your own accounts; no review needed.)`] },
+  { id: "general", title: "General" },
+  { id: "advanced", title: "Advanced (optional)" },
+];
+let settingsData = null;
+
+async function loadSettings() {
+  try { settingsData = await api("/api/settings"); } catch (e) { $("#settings-err").textContent = e.message; return; }
+  const S = settingsData.settings, base = settingsData.base_url;
+  $("#infra-info").innerHTML = `Database: <b>${esc(settingsData.database)}</b> · Video storage: <b>${esc(settingsData.storage)}</b>`
+    + (settingsData.database === "sqlite" ? ` <span class="hint">(local mode: set DATABASE_URL and the bucket variables on Railway)</span>` : "");
+  const field = (k) => {
+    const m = S[k];
+    const src = m.source === "app" ? `<button class="small danger" data-unset="${k}" title="Remove the value saved in the app">remove saved</button>` :
+                m.source === "env" ? `<span class="hint">from Railway/.env</span>` : "";
+    const ph = m.secret ? (m.set ? `${m.value} (saved, type to replace)` : "not set") : "";
+    return `<div class="field"><label for="set-${k}">${esc(m.label)} <span class="hint">· ${k}</span></label>
+      <div class="actions" style="flex-wrap:nowrap"><input id="set-${k}" data-key="${k}" ${m.secret ? 'type="password" autocomplete="new-password"' : ""}
+        value="${m.secret ? "" : esc(m.value)}" placeholder="${esc(ph)}">${src}</div></div>`;
+  };
+  $("#settings-form").innerHTML = GROUPS.map(g => {
+    const keys = Object.keys(S).filter(k => S[k].group === g.id);
+    let extra = "";
+    if (g.platform) {
+      const redirect = settingsData.redirects[g.id];
+      const warn = g.https && !redirect.startsWith("https") ? `<p class="err">${g.title.split(" ")[0]} needs HTTPS: use these links from your Railway URL, not localhost.</p>` : "";
+      extra = `<ol class="hint" style="padding-left:18px;margin:0 0 12px">${g.steps.map(s => `<li style="margin-bottom:4px">${s}</li>`).join("")}</ol>
+        <div class="chan-box" style="margin-bottom:12px">
+          ${[["Redirect URL", redirect], ["Privacy policy", base + "/privacy"], ["Terms of service", base + "/terms"]].map(([l, u]) =>
+            `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><b style="margin:0;min-width:120px">${l}</b>
+             <code style="overflow-wrap:anywhere;flex:1">${esc(u)}</code><button class="small" data-copytext="${esc(u)}">Copy</button></div>`).join("")}
+          ${warn}</div>`;
+    } else if (g.help) extra = `<p class="hint" style="margin-top:0">${g.help}</p>`;
+    const body = `${extra}${keys.map(field).join("")}<div id="test-${g.id}"></div>`;
+    return g.id === "advanced" ? `<details style="margin-bottom:16px"><summary class="hint" style="cursor:pointer">${g.title}</summary><div style="margin-top:12px">${body}</div></details>`
+                               : `<h3>${g.title}</h3>${body}`;
+  }).join("");
+}
+
+$("#settings-form").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.copytext) { await navigator.clipboard.writeText(b.dataset.copytext).catch(() => {}); b.textContent = "Copied ✓"; setTimeout(() => b.textContent = "Copy", 1500); }
+  if (b.dataset.unset && confirm("Remove the value saved in the app? (Railway/.env value, if any, will be used.)")) {
+    await api("/api/settings", { method: "PUT", body: JSON.stringify({ [b.dataset.unset]: "" }) }); loadSettings(); loadStatus();
+  }
+});
+$("#btn-save-settings").onclick = () => busy($("#btn-save-settings"), async () => {
+  $("#settings-err").textContent = ""; $("#settings-ok").textContent = "";
+  const changes = {};
+  for (const inp of $$("#settings-form input[data-key]")) {
+    const k = inp.dataset.key, m = settingsData.settings[k], v = inp.value.trim();
+    if (m.secret ? v !== "" : v !== (m.value || "")) changes[k] = v;
+  }
+  if (!Object.keys(changes).length) { $("#settings-ok").textContent = "Nothing changed."; return; }
+  try { await api("/api/settings", { method: "PUT", body: JSON.stringify(changes) });
+        $("#settings-ok").textContent = `✓ Saved ${Object.keys(changes).length} setting(s).`; await loadSettings(); loadStatus(); }
+  catch (err) { $("#settings-err").textContent = err.message; }
+});
+$("#btn-test-keys").onclick = () => busy($("#btn-test-keys"), async () => {
+  const r = await api("/api/settings/test", { method: "POST" });
+  const where = { GEMINI_API_KEY: "ai", GROQ_API_KEY: "ai", OPENROUTER_API_KEY: "ai", DEEPSEEK_API_KEY: "ai", PIXABAY_API_KEY: "media", PEXELS_API_KEY: "media", CLOUDFLARE_API_TOKEN: "media",
+                  storage: "users", youtube: "youtube", tiktok: "tiktok", instagram: "instagram" };
+  const LABELS = { ...PLATFORM, storage: "Video storage" };
+  $$("[id^=test-]").forEach(el => el.innerHTML = "");
+  for (const [k, v] of Object.entries(r)) {
+    const label = settingsData.settings[k]?.label || LABELS[k] || k;
+    $("#test-" + where[k]).insertAdjacentHTML("beforeend",
+      `<div class="${v.ok ? "ok-msg" : v.msg === "not set" ? "hint" : "err"}" style="margin:0 0 6px">${v.ok ? "✓" : v.msg === "not set" ? "–" : "✕"} ${esc(label)}: ${esc(v.msg)}</div>`);
+  }
+});
+
+// ---------- admin: users ----------
+async function loadUsers() {
+  let users;
+  try { users = await api("/api/admin/users"); } catch (e) { $("#users-err").textContent = e.message; return; }
+  $("#users-table").innerHTML = `<table class="users"><tr><th>Email</th><th>Joined</th><th>Channels</th><th>Videos (24h / all)</th>
+    <th>Daily limit</th><th>Role</th><th></th></tr>` + users.map(u => `<tr>
+      <td>${esc(u.email)}${!u.is_approved ? ` <span class="status-review">(pending approval)</span>` : ""}${u.is_active ? "" : ` <span class="status-error">(disabled)</span>`}</td>
+      <td>${new Date(u.created_at * 1000).toLocaleDateString()}</td>
+      <td>${u.channels}</td><td>${u.videos_today} / ${u.videos_total}</td>
+      <td><input type="number" min="0" data-limit="${u.id}" value="${u.daily_limit ?? ""}" placeholder="default"></td>
+      <td>${u.is_admin ? "admin" : "user"}</td>
+      <td class="actions" style="gap:4px;flex-wrap:nowrap">${me && u.id === me.id ? `<span class="hint">you</span>` : !u.is_approved ? `
+        <button class="small primary" data-approve="${u.id}" data-val="true">✓ Approve</button>
+        <button class="small danger" data-toggle-active="${u.id}" data-val="false">${u.is_active ? "Reject" : "Rejected"}</button>` : `
+        <button class="small" data-approve="${u.id}" data-val="false" title="Sign them out and require approval again">Revoke</button>
+        <button class="small" data-toggle-admin="${u.id}" data-val="${!u.is_admin}">${u.is_admin ? "Remove admin" : "Make admin"}</button>
+        <button class="small ${u.is_active ? "danger" : ""}" data-toggle-active="${u.id}" data-val="${!u.is_active}">${u.is_active ? "Disable" : "Enable"}</button>`}</td>
+    </tr>`).join("") + `</table>`;
+}
+$("#users-table").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const val = b.dataset.val === "true";
+  const body = b.dataset.approve ? { is_approved: val, ...(val ? { is_active: true } : {}) }
+             : b.dataset.toggleAdmin ? { is_admin: val } : { is_active: val };
+  const id = b.dataset.approve || b.dataset.toggleAdmin || b.dataset.toggleActive;
+  try { await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }); loadUsers(); loadMe(); }
+  catch (err) { $("#users-err").textContent = err.message; }
+});
+$("#users-table").addEventListener("change", async (e) => {
+  const id = e.target.dataset.limit; if (!id) return;
+  const v = e.target.value.trim();
+  try { await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify({ daily_limit: v === "" ? -1 : +v }) }); $("#users-err").textContent = ""; }
+  catch (err) { $("#users-err").textContent = err.message; }
+});
+
+// ---------- jobs ----------
+const jobState = {}, jobData = {};
+function publishHTML(j) {
+  const pub = j.publish || {};
+  const rows = Object.entries(pub).map(([p, st]) => {
+    const name = PLATFORM[p] || p;
+    if (st.status === "review") return `<span class="status-review">${name}: waiting for approval</span><button class="small primary" data-pub="${p}" data-id="${j.id}">${PUB_LABEL[p]}</button>`;
+    if (st.status === "uploading") return `<span class="status-uploading">${name}: uploading…</span>`;
+    if (st.status === "done") return `<span class="status-done">${name}: ✓</span>${String(st.result).startsWith("http") ? `<a href="${esc(st.result)}" target="_blank" rel="noopener">${esc(st.result)}</a>` : `<span class="hint">${esc(st.result)}</span>`}`;
+    if (st.status === "not_connected") return `<span class="status-error">${name}: not connected</span><a href="#channels">Connect in Channels</a>`;
+    return `<span class="status-error">${name}: ${esc(st.error || "failed")}</span><button class="small" data-pub="${p}" data-id="${j.id}">Try again</button>`;
+  });
+  if (j.channel_id && j.video) {
+    const ch = channels.find(c => c.id === j.channel_id);
+    for (const p of Object.keys(PLATFORM)) if (!pub[p] && ch?.connected?.[p]) rows.push(`<button class="small" data-pub="${p}" data-id="${j.id}">${PUB_LABEL[p]}</button>`);
+  }
+  return rows.length ? rows.map(r => `<div class="pub">${r}</div>`).join("") : "";
+}
+function jobHTML(j) {
+  const when = new Date(j.created * 1000).toLocaleString();
+  const tags = (j.channel_name ? `<span class="tag">${esc(j.channel_name)}</span>` : "") + (j.trigger === "schedule" ? `<span class="tag">⏰ scheduled</span>` : "");
+  const caption = j.script ? [j.script.title, j.script.description, (j.script.hashtags || []).join(" ")].filter(Boolean).join("\n\n") : "";
+  const file = (j.title || "short").replace(/[^\w\- ]+/g, "").trim() || "short";
+  return `<div class="job" id="job-${j.id}">
+    <div class="job-top"><div>
+      ${tags ? `<div>${tags}</div>` : ""}
+      <div class="job-title">${esc(j.title || "Untitled")}</div>
+      <div class="job-meta"><span class="status-${j.status}">${j.status}</span> · ${esc(j.step || "")} · ${when}${j.length ? ` · ${j.length}s` : ""}</div>
+    </div>${j.status === "done" || j.status === "error" ? `<button class="small" data-delete="${j.id}" title="Delete">✕</button>` : ""}</div>
+    ${j.status === "running" || j.status === "queued" ? `<div class="bar"><i style="width:${j.progress}%"></i></div>` : ""}
+    ${j.error ? `<div class="err">${esc(j.error)}</div><div class="actions" style="margin-top:8px"><button class="small primary" data-retry="${j.id}">↻ Retry</button></div>` : ""}
+    ${j.video ? `<video controls preload="metadata" src="${j.video}"></video>
+      <div class="actions" style="margin-top:8px"><a href="${j.video}?download=1" download="${esc(file)}.mp4"><button class="small primary">Download MP4</button></a>
+      ${caption ? `<button class="small" data-copy="${j.id}">Copy caption + hashtags</button>` : ""}</div>` : ""}
+    ${j.expired ? `<div class="hint" style="margin-top:6px">Video file removed after the retention period.</div>` : ""}
+    ${publishHTML(j)}
+    <details><summary>Log</summary><pre>${esc((j.log || []).join("\n"))}</pre></details>
+  </div>`;
+}
+async function pollJobs() {
+  let list;
+  try { list = await api("/api/jobs"); } catch { return; }
+  const filter = $("#job-filter").value;
+  if (filter) list = list.filter(j => j.channel_id === filter);
+  const box = $("#jobs");
+  if (!list.length) { box.innerHTML = `<div class="empty">No videos yet.</div>`; for (const k in jobState) delete jobState[k]; return; }
+  $(".empty", box)?.remove();
+  const ids = new Set(list.map(j => j.id));
+  for (const id of Object.keys(jobState)) if (!ids.has(id)) { document.getElementById("job-" + id)?.remove(); delete jobState[id]; }
+  list.forEach((j, i) => {
+    jobData[j.id] = j;
+    const sig = JSON.stringify([j.status, j.progress, j.step, (j.log || []).length, j.publish, j.title, channels.length]);
+    let el = document.getElementById("job-" + j.id);
+    if (jobState[j.id] !== sig || !el) {
+      const tmp = document.createElement("div"); tmp.innerHTML = jobHTML(j);
+      const fresh = tmp.firstElementChild;
+      if (el) { const open = $("details", el)?.open; el.replaceWith(fresh); if (open) $("details", fresh).open = true; }
+      el = fresh; jobState[j.id] = sig;
+    }
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+  });
+}
+$("#job-filter").onchange = () => { $("#jobs").innerHTML = ""; for (const k in jobState) delete jobState[k]; pollJobs(); };
+$("#jobs").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const d = b.dataset;
+  if (d.retry) { b.disabled = true; await api(`/api/jobs/${d.retry}/retry`, { method: "POST" }).catch(err => alert(err.message)); pollJobs(); }
+  if (d.pub) { b.disabled = true; await api(`/api/jobs/${d.id}/publish/${d.pub}`, { method: "POST" }).catch(err => alert(err.message)); pollJobs(); }
+  if (d.delete && confirm("Delete this video?")) { await api(`/api/jobs/${d.delete}`, { method: "DELETE" }).catch(err => alert(err.message)); pollJobs(); }
+  if (d.copy) {
+    const j = jobData[d.copy];
+    await navigator.clipboard.writeText([j.script.title, j.script.description, (j.script.hashtags || []).join(" ")].filter(Boolean).join("\n\n")).catch(() => {});
+    b.textContent = "Copied ✓"; setTimeout(() => b.textContent = "Copy caption + hashtags", 1500);
+  }
+});
+
+// ---------- boot ----------
+(async () => {
+  await loadMe().catch(() => {});
+  route();
+  await loadStatus().catch(() => {});
+  await loadVoices();
+  await loadChannels();
+  pollJobs();
+  setInterval(pollJobs, 2500);
+  setInterval(() => loadStatus().catch(() => {}), 20000);
+  setInterval(() => { if (location.hash === "#channels" && $("#channel-editor").classList.contains("hidden")) loadChannels(); }, 15000);
+})();
+</script>
+</body>
+</html>

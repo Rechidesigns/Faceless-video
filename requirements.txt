@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+httpx
+edge-tts>=7.0
+tzdata
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+boto3
+argon2-cffi
+# Optional caption fallback (large download, only used if TTS gives no word timings):
+# faster-whisper
