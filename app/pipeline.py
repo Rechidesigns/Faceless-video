@@ -63,9 +63,15 @@ def run(job: dict, update, log) -> None:
         cosmos_budget = [int(config.get("COSMOS_MAX_SCENES") or 3)]   # AI video clips per video, when available
     except ValueError:
         cosmos_budget = [3]
+    # scene picture lengths in whole frames, cut on the audio timeline (no rounding drift across scenes)
+    bounds, t = [0], 0.0
+    for d in durs:
+        t += d
+        bounds.append(round(t * render.FPS))
+    vdurs = [(bounds[i + 1] - bounds[i]) / render.FPS for i in range(n)]
     for i, sc in enumerate(scenes):
         update(40 + 40 * i / n, f"Visuals {i + 1}/{n}")
-        d = durs[i]
+        d = vdurs[i]
         # fast-cut pacing: a 3-shot hook, then ~2.5 s shots
         n_shots = 3 if i == 0 and d >= 4.5 else (2 if d >= 3.2 else 1)
         shots = visuals.fetch_scene(i, sc, s.get("visual_mode", "stock"), workdir, used, log,

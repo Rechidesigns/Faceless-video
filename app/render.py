@@ -34,27 +34,35 @@ def to_wav(src: Path, out: Path, pad: float) -> Path:
     return out
 
 
+def frames_for(dur: float) -> int:
+    return max(1, round(dur * FPS))
+
+
 def scene_clip(src: Path | None, kind: str, dur: float, out: Path, index: int, start: float = 0.0) -> Path:
+    """Render exactly frames_for(dur) frames, so scene lengths never drift from the voiceover."""
+    frames = frames_for(dur)
+    # clone the last frame if the source runs out early, then stop at the exact frame count
+    hold = f"tpad=stop_mode=clone:stop_duration={dur + 1:.3f}"
     cover = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
     if kind == "video":
         # slow push-in (up to +7%) keeps every shot moving, even static stock footage
         push = (f"scale=w='trunc({W}*(1+0.07*t/{max(dur, 0.1):.3f})/2)*2':h=-2:eval=frame,"
                 f"crop={W}:{H}")
         seek = ["-ss", f"{start:.3f}"] if start > 0 else []
-        run([*seek, "-stream_loop", "-1", "-i", str(src), "-t", f"{dur:.3f}", "-an",
-             "-vf", f"{cover},{push},setsar=1,fps={FPS}", *ENC, str(out)])
+        run([*seek, "-stream_loop", "-1", "-i", str(src), "-an",
+             "-vf", f"{cover},{push},setsar=1,fps={FPS},setpts=N/{FPS}/TB,{hold}",
+             "-frames:v", str(frames), "-r", str(FPS), *ENC, str(out)])
     elif kind == "image":
-        frames = max(int(dur * FPS) + 1, 2)
         step = 0.18 / frames
         # alternate slow zoom-in / zoom-out for a Ken Burns feel
         z = (f"min(zoom+{step:.6f},1.18)" if index % 2 == 0
              else f"if(eq(on,0),1.18,max(zoom-{step:.6f},1.0))")
         vf = (f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase,crop={W * 2}:{H * 2},"
               f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS},"
-              f"setsar=1")
-        run(["-i", str(src), "-vf", vf, "-frames:v", str(frames), "-t", f"{dur:.3f}", *ENC, str(out)])
+              f"setsar=1,{hold}")
+        run(["-i", str(src), "-vf", vf, "-frames:v", str(frames), "-r", str(FPS), *ENC, str(out)])
     else:
-        run(["-f", "lavfi", "-i", f"color=c=0x111827:s={W}x{H}:r={FPS}", "-t", f"{dur:.3f}",
+        run(["-f", "lavfi", "-i", f"color=c=0x111827:s={W}x{H}:r={FPS}", "-frames:v", str(frames),
              *ENC, str(out)])
     return out
 
@@ -72,10 +80,13 @@ def scene_from_shots(shots: list[tuple[Path | None, str]], dur: float, out: Path
             except RuntimeError:
                 pass
         return scene_clip(src, kind, dur, out, index, start)
-    each = dur / len(shots)
+    # split in whole frames so the shots add up to exactly the scene's frame count
+    total = frames_for(dur)
+    n = len(shots)
+    cuts = [round(total * k / n) for k in range(n + 1)]
     parts = []
     for k, (src, kind) in enumerate(shots):
-        d = round(each, 3) if k < len(shots) - 1 else round(dur - each * (len(shots) - 1), 3)
+        d = (cuts[k + 1] - cuts[k]) / FPS
         start = 0.0
         if kind == "video":
             try:
@@ -96,10 +107,13 @@ def concat(files: list[Path], out: Path, workdir: Path) -> Path:
 
 def final_mix(workdir: Path, video: Path, narration: Path, ass: Path | None,
               music: Path | None, music_volume: float, out: Path) -> Path:
+    # The voiceover sets the length: if the picture is short it holds its last frame, it never cuts the voice.
+    length = duration(narration)
     args = ["-i", video.name, "-i", narration.name]
     if music:
         args += ["-stream_loop", "-1", "-i", str(music)]
-    vchain = "[0:v]null[v]"
+    hold = "tpad=stop_mode=clone:stop_duration=5"
+    vchain = f"[0:v]{hold}[v]"
     if ass:
         sub = f"subtitles={ass.name}"
         try:  # relative path avoids Windows drive-letter escaping inside the filter string
@@ -107,7 +121,7 @@ def final_mix(workdir: Path, video: Path, narration: Path, ass: Path | None,
             sub += f":fontsdir={fonts}"
         except ValueError:  # different drive on Windows: rely on system fonts
             pass
-        vchain = f"[0:v]{sub}[v]"
+        vchain = f"[0:v]{hold},{sub}[v]"
     # Loudness-normalize to -14 LUFS (the TikTok / YouTube / Instagram standard) so the voice isn't quiet.
     # loudnorm resamples internally, so convert back to 44.1 kHz afterwards.
     norm = "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100"
@@ -117,6 +131,6 @@ def final_mix(workdir: Path, video: Path, narration: Path, ass: Path | None,
     else:
         achain = f"[1:a]{norm}[a]"
     args += ["-filter_complex", f"{vchain};{achain}", "-map", "[v]", "-map", "[a]",
-             *ENC, "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out.name]
+             *ENC, "-c:a", "aac", "-b:a", "192k", "-t", f"{length:.3f}", "-movflags", "+faststart", out.name]
     run(args, cwd=workdir)
     return out
